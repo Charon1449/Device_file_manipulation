@@ -134,7 +134,7 @@ void Lire_secteur(const char *disque_physique, int Num_sect, unsigned char *sect
     disk = fopen(disk_path, "r");
     if ((disk == NULL))
     {
-        printf("Error opening file \n");
+        printf("Fichier non ouvert \n");
         return;
     }
     if (fseek(disk, 512 * Num_sect, SEEK_SET) == 0) //on choisie l'offset du secteur
@@ -156,7 +156,7 @@ void Liste_Disques()
     DIR *dprt = opendir("/dev");
     if (dr == NULL)
     {
-        printf("Could not open current directory");
+        printf("Ouverture du dossier impossible");
         return;
     }
     printf("Les disques disponibles sont : \n");
