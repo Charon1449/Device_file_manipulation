@@ -30,8 +30,9 @@ int main()
     printf("\t\t hn_deroues@esi.dz      hw_yaici@esi.dz\n\n\n");
 
     int choice, num, i;
-    char disque[10];
+    char disque[15];
     unsigned long int fact;
+    char disk_path[40];
 
     while (1)
     {
@@ -67,8 +68,10 @@ int main()
             scanf("%d", &num);
             printf("Donner le nom du disque:\n");
             scanf("%s", disque);
-            Afficher_Fdel(disque ,num);
-            printf("----------------------------------------\n\n");
+            strcpy(disk_path, "/dev/");
+            strcat(disk_path, disque);
+            Afficher_Fdel(disk_path ,num);
+            printf("\n----------------------------------------\n\n");
             break;
 
         case 4:
