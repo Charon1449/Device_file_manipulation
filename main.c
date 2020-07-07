@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <stdbool.h>
 
 
 typedef struct chaine chaine;
@@ -9,24 +10,182 @@ struct chaine
 {
   char nom[50];
 };
-void Afficher_Fdel(char nom_disque[],int num_partition);
-int cluster_suivant(FILE* disk,int cluster_courant,int debut_fat);
-void Liste_Disques();
+
 void hexDump(const char *desc, const void *addr, const int len);
+void Liste_Disques();
 void Lire_secteur(const char *disque_physique, int Num_sect, unsigned char *sector);
-void Afficher_secteur(const char *disque_physique, int Num_sect)
+void Afficher_secteur(const char *disque_physique, int Num_sect);
+int cluster_suivant(FILE* disk,int cluster_courant,int debut_fat);
+void Afficher_Fdel(char nom_disque[],int num_partition);
 
 
-int main(int argc, char **argv)
+int main()
+
 {
+    printf("\n\n\t\tESI –1CS                             Juin 2020\n");
+    printf("\n\n\t\t        TP de Systèmes d’exploitation      \n");
+    printf("\n\t\t     Designation des disques sous Linux\n");
+    printf("\n\n\t\tBinome :\n");
+    printf("\n\t\t-Deroues Nawfel(G07)   -Yaici Walid(G07)\n");
+    printf("\t\t hn_deroues@esi.dz      hw_yaici@esi.dz\n\n\n");
 
+    int choice, num, i;
+    char disque[10];
+    unsigned long int fact;
 
-    list_disks();
-    get_disk_info("sda");
-    show_sector("sda" , 0);
+    while (1)
+    {
+        printf("Choisissez une fonction: \n\n");
+        printf("1. Liste_Disques() :Affiche la liste des disques physiques connectes   \n");
+        printf("2. Afficher_secteur (disque_physique, Num_sect): lire le secteur Num_sect du disque disque_physique et affiche son contenu, en hexadecimal.\n");
+        printf("3. Afficher_Fdel(disque_physique, partition) : Afficher les fichiers/répertoires de la partion spécifiée en entrée de type FAT32\n");
+        printf("4. Exit\n\n\n");
+        printf("Enter your choice :  ");
+        scanf("%d", &choice);
+
+        switch (choice)
+        {
+        case 1:
+            printf("\n----------------------------------------\n");
+            Liste_Disques();
+            printf("----------------------------------------\n\n");
+            break;
+
+        case 2:
+            printf("\n----------------------------------------\n");
+            printf("Donner le numero du secteur:\n");
+            scanf("%d", &num);
+            printf("Donner le nom du disque:\n");
+            scanf("%s", disque);
+            Afficher_secteur(disque, num);
+            printf("----------------------------------------\n\n");
+            break;
+
+        case 3:
+            printf("\n----------------------------------------\n");
+            printf("Donner le numero du secteur:\n");
+            scanf("%d", &num);
+            printf("Donner le nom du disque:\n");
+            scanf("%s", disque);
+            Afficher_Fdel(disque ,num);
+            printf("----------------------------------------\n\n");
+            break;
+
+        case 4:
+            exit(0);
+        }
+    }
     return 0;
 }
 
+void hexDump(const char *desc, const void *addr, const int len)
+{
+    int i;
+    unsigned char buff[17];
+    const unsigned char *pc = (const unsigned char *)addr;
+
+    if (desc != NULL)
+        printf("%s bn\n", desc);
+
+    if (len == 0)
+    {
+        printf("  TIALE ZERO\n"); //la taille du secteur est de 0
+        return;
+    }
+    else if (len < 0)
+    {
+        printf("  TAILLE NEGATIVE : %d\n", len); //la taille du secteur est nagative
+        return;
+    }
+    for (i = 0; i < len; i++)
+    {
+        if ((i % 16) == 0)
+        {
+            if (i != 0)
+                printf("  %s\n", buff); //On affiche le contenue en hexa
+            printf("  %04x ", i);
+        }
+        printf(" %02x", pc[i]); //affichage du offset
+
+        if ((pc[i] < 0x20) || (pc[i] > 0x7e)) //on affichle les carectere ASSCI
+            buff[i % 16] = '.';
+        else
+            buff[i % 16] = pc[i];
+        buff[(i % 16) + 1] = '\0'; //saut de ligne si on depace les 16 colone
+    }
+
+    while ((i % 16) != 0)
+    {
+        printf("   ");
+        i++;
+    }
+
+    printf("  %s\n", buff);
+}
+void Lire_secteur(const char *disque_physique, int Num_sect, unsigned char *sector)
+{
+    FILE *disk;
+    char disk_path[40];
+    strcpy(disk_path, "/dev/");
+    strcat(disk_path, disque_physique); //creation du chemin vers le fichier du disque dans /dev
+    disk = fopen(disk_path, "r");
+    if ((disk == NULL))
+    {
+        printf("Error opening file \n");
+        return;
+    }
+    if (fseek(disk, 512 * Num_sect, SEEK_SET) == 0) //on choisie l'offset du secteur
+        fread(sector, 512, 1, disk);                //on lit un secteur de 512 bytes
+}
+void Afficher_secteur(const char *disque_physique, int Num_sect)
+{
+    unsigned char sec[512];
+    char num[2];
+    sprintf(num, "%d", Num_sect);
+    Lire_secteur(disque_physique, Num_sect, sec); //on lit le secteur
+    printf("Lecture du secteur numero %d du disque %s :\n\n", Num_sect, disque_physique);
+    hexDump("offset|", sec, sizeof(sec)); //on utilise la fonction hexDump pour avoir l'affichage
+}
+void Liste_Disques()
+{
+    struct dirent *de, *dpart;
+    DIR *dr = opendir("/dev");
+    DIR *dprt = opendir("/dev");
+    if (dr == NULL)
+    {
+        printf("Could not open current directory");
+        return;
+    }
+    printf("Les disques disponibles sont : \n");
+    while ((de = readdir(dr)) != NULL)
+    {
+        if ((strstr(de->d_name, "sd") != NULL) && (strlen(de->d_name) < 4))
+        {
+            printf("\tdisque :%s\n", de->d_name);
+            DIR *dprt = opendir("/dev");
+            int i = 1;
+            while ((dpart = readdir(dprt)) != NULL)
+            {
+                if ((strstr(dpart->d_name, de->d_name) != NULL) && (strlen(dpart->d_name) > 3))
+                {
+                    if (i == 1)
+                        printf("\tses partitions:\n");
+                    printf("\t  %s\n", dpart->d_name);
+                    i = 0;
+                }
+            }
+            printf("\n");
+        }
+    }
+    closedir(dr);
+}
+int cluster_suivant(FILE* disk,int cluster_courant,int debut_fat){//retourne le cluster suivant du numero donné en parametre(cluster_courant)
+  int result;
+  fseek(disk,debut_fat*512+(cluster_courant)*4,SEEK_SET);
+  fread(&result,4,1,disk);
+  if(result>=0x0FFFFFF8) result=-1;//dernier cluster de la chaine
+  return result;
+}
 void Afficher_Fdel(char nom_disque[],int num_partition){
   //Afficher les fichiers/répertoires de la partition spécifiée en entrée de type FAT32 en donnant pour chacun le nom en format
   //court, sa taille en octets, son N° du premier cluster dans la FAT , le nom du répertoire père et la adte de derniere modification.
@@ -189,111 +348,3 @@ void Afficher_Fdel(char nom_disque[],int num_partition){
 
 
 
-int cluster_suivant(FILE* disk,int cluster_courant,int debut_fat){//retourne le cluster suivant du numero donné en parametre(cluster_courant)
-  int result;
-  fseek(disk,debut_fat*512+(cluster_courant)*4,SEEK_SET);
-  fread(&result,4,1,disk);
-  if(result>=0x0FFFFFF8) result=-1;//dernier cluster de la chaine
-  return result;
-}
-void hexDump(const char *desc, const void *addr, const int len)
-{
-    int i;
-    unsigned char buff[17];
-    const unsigned char *pc = (const unsigned char *)addr;
-
-    if (desc != NULL)
-        printf("%s bn\n", desc);
-
-    if (len == 0)
-    {
-        printf("  TIALE ZERO\n");//la taille du secteur est de 0
-        return;
-    }
-    else if (len < 0)
-    {
-        printf("  TAILLE NEGATIVE : %d\n", len);//la taille du secteur est nagative
-        return;
-    }
-    for (i = 0; i < len; i++)
-    {
-        if ((i % 16) == 0)
-        {
-            if (i != 0)
-                printf("  %s\n", buff);//On affiche le contenue en hexa
-            printf("  %04x ", i);
-        }
-        printf(" %02x", pc[i]);//affichage du offset
-
-        if ((pc[i] < 0x20) || (pc[i] > 0x7e))//on affichle les carectere ASSCI
-            buff[i % 16] = '.';
-        else
-            buff[i % 16] = pc[i];
-        buff[(i % 16) + 1] = '\0';//saut de ligne si on depace les 16 colone
-    }
-
-    while ((i % 16) != 0)
-    {
-        printf("   ");
-        i++;
-    }
-
-    printf("  %s\n", buff);
-}
-void Lire_secteur(const char *disque_physique, int Num_sect, unsigned char *sector)
-{
-    FILE *disk;
-    char disk_path[40];
-    strcpy(disk_path, "/dev/");
-    strcat(disk_path, disque_physique);//creation du chemin vers le fichier du disque dans /dev
-    disk = fopen(disk_path, "r");
-    if ((disk == NULL))
-    {
-        printf("Error opening file \n");
-        return;
-    }
-    if (fseek(disk, 512 * Num_sect, SEEK_SET) == 0)//on choisie l'offset du secteur 
-        fread(sector, 512, 1, disk);//on lit un secteur de 512 bytes
-}
-void Afficher_secteur(const char *disque_physique, int Num_sect)
-{
-    unsigned char sec[512];
-    char num[2];
-    sprintf(num, "%d", Num_sect);
-    Lire_secteur(disque_physique, Num_sect, sec);//on lit le secteur
-    printf("Lecture du secteur numero %d du disque %s :\n\n", Num_sect, disque_physique);
-    hexDump("offset|", sec, sizeof(sec));//on utilise la fonction hexDump pour avoir l'affichage
-}
-void Liste_Disques()
-{
-    struct dirent *de, *dpart;
-    DIR *dr = opendir("/dev");
-    DIR *dprt = opendir("/dev");
-    if (dr == NULL)
-    {
-        printf("Could not open current directory");
-        return;
-    }
-    printf("Les disques disponibles sont : \n");
-    while ((de = readdir(dr)) != NULL)
-    {
-        if ((strstr(de->d_name, "sd") != NULL) && (strlen(de->d_name) < 4))
-        {
-            printf("\tdisque :%s\n", de->d_name);
-            DIR *dprt = opendir("/dev");
-            int i=1;
-            while ((dpart = readdir(dprt)) != NULL)
-            {
-                if ((strstr(dpart->d_name, de->d_name) != NULL) && (strlen(dpart->d_name) > 3))
-                {
-                    if (i==1)
-                        printf("\tses partitions:\n");
-                    printf("\t  %s\n", dpart->d_name);
-                    i=0;
-                }
-            }
-            printf("\n");
-        }
-    }
-    closedir(dr);
-}
