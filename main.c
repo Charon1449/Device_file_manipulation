@@ -64,7 +64,7 @@ int main()
 
         case 3:
             printf("\n----------------------------------------\n");
-            printf("Donner le numero du secteur:\n");
+            printf("Donner le numero de la partition:\n");
             scanf("%d", &num);
             printf("Donner le nom du disque:\n");
             scanf("%s", disque);
